@@ -79,54 +79,70 @@ if(PYTHONINTERP_FOUND)
         "The paths to the Python include directories.")
     message(STATUS "Using PythonExtra_INCLUDE_DIRS: ${PythonExtra_INCLUDE_DIRS}")
 
-    if(NOT DEFINED PythonExtra_LIBRARIES)
-      execute_process(
-        COMMAND
-        "${PYTHON_CONFIG_EXECUTABLE}"
-        "--ldflags"
-        OUTPUT_VARIABLE _output
-        RESULT_VARIABLE _result
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-      )
-      if(NOT _result EQUAL 0)
-        message(FATAL_ERROR
-          "execute_process(${PYTHON_CONFIG_EXECUTABLE} --ldflags) returned "
-          "error code ${_result}")
-      endif()
+    # From pybind11/docs/compiling.rst
+    #
+    # On Mac OS: the build command is almost the same but it also requires passing
+    # the ``-undefined dynamic_lookup`` flag so as to ignore missing symbols when
+    # building the module
 
-      string(REPLACE " " ";" _output_list "${_output}")
+    # On Linux and macOS, it's better to (intentionally) not link against
+    # ``libpython``. The symbols will be resolved when the extension library
+    # is loaded into a Python binary. This is preferable because you might
+    # have several different installations of a given Python version (e.g. the
+    # system-provided Python, and one that ships with a piece of commercial
+    # software). In this way, the plugin will work with both versions, instead
+    # of possibly importing a second Python library into a process that already
+    # contains one (which will lead to a segfault).
+
+    # if(NOT DEFINED PythonExtra_LIBRARIES)
+    #   execute_process(
+    #     COMMAND
+    #     "${PYTHON_CONFIG_EXECUTABLE}"
+    #     "--ldflags"
+    #     OUTPUT_VARIABLE _output
+    #     RESULT_VARIABLE _result
+    #     OUTPUT_STRIP_TRAILING_WHITESPACE
+    #   )
+    #   if(NOT _result EQUAL 0)
+    #     message(FATAL_ERROR
+    #       "execute_process(${PYTHON_CONFIG_EXECUTABLE} --ldflags) returned "
+    #       "error code ${_result}")
+    #   endif()
+
+    #   string(REPLACE " " ";" _output_list "${_output}")
       set(PythonExtra_LIBRARIES
         ""
         CACHE INTERNAL
         "The libraries that need to be linked against for Python extensions.")
 
-      set(_library_paths "")
-      foreach(_item ${_output_list})
-        string(REGEX MATCH "-L(.*)" _regex_match ${_item})
-        if(NOT _regex_match STREQUAL "")
-          string(SUBSTRING "${_regex_match}" 2 -1 _library_path)
-          list(APPEND _library_paths "${_library_path}")
-        endif()
-      endforeach()
+    #   set(_library_paths "")
+    #   foreach(_item ${_output_list})
+    #     string(REGEX MATCH "-L(.*)" _regex_match ${_item})
+    #     if(NOT _regex_match STREQUAL "")
+    #       string(SUBSTRING "${_regex_match}" 2 -1 _library_path)
+    #       list(APPEND _library_paths "${_library_path}")
+    #     endif()
+    #   endforeach()
 
-      set(_python_version_no_dots
-        "${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINOR}")
-      set(_python_version
-        "${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}")
+    #   set(_python_version_no_dots
+    #     "${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINOR}")
+    #   set(_python_version
+    #     "${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}")
 
-      find_library(PYTHON_LIBRARY
-        NAMES
-        python${_python_version_no_dots}
-        python${_python_version}mu
-        python${_python_version}m
-        python${_python_version}u
-        python${_python_version}
-        PATHS
-        ${_library_paths}
-        NO_SYSTEM_ENVIRONMENT_PATH
-      )
-    endif()
+    #   find_library(PYTHON_LIBRARY
+    #     NAMES
+    #     python${_python_version_no_dots}
+    #     python${_python_version}mu
+    #     python${_python_version}m
+    #     python${_python_version}u
+    #     python${_python_version}
+    #     PATHS
+    #     ${_library_paths}
+    #     NO_SYSTEM_ENVIRONMENT_PATH
+    #   )
+    # endif()
 
+    set(PYTHON_LIBRARY "-undefined dynamic_lookup")
     set(PythonExtra_LIBRARIES "${PYTHON_LIBRARY}")
     message(STATUS "Using PythonExtra_LIBRARIES: ${PythonExtra_LIBRARIES}")
   else()
